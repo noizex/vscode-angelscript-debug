@@ -4,7 +4,7 @@
 
 import {
 	Logger, logger,
-	LoggingDebugSession,
+	DebugSession,
 	InitializedEvent, TerminatedEvent, StoppedEvent, BreakpointEvent, OutputEvent,
 	Thread, StackFrame, Scope, Source, Handles, Breakpoint
 } from 'vscode-debugadapter';
@@ -14,32 +14,22 @@ import { basename } from 'path';
 import { MockRuntime, MockBreakpoint } from './mockRuntime';
 const { Subject } = require('await-notify');
 
-
-/**
- * This interface describes the mock-debug specific launch attributes
- * (which are not part of the Debug Adapter Protocol).
- * The schema for these attributes lives in the package.json of the mock-debug extension.
- * The interface should always match this schema.
- */
 interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
-	/** An absolute path to the "program" to debug. */
-	program: string;
+	/** Remote host to which debugger connects. */
+	remoteHost: string;
+	/** Remote port */
+	remotePort: string;
 	/** Automatically stop target after launch. If not specified, target does not stop. */
 	stopOnEntry?: boolean;
 	/** enable logging the Debug Adapter Protocol */
 	trace?: boolean;
 }
 
-export class MockDebugSession extends LoggingDebugSession {
+export class AngelscriptDebugSession extends DebugSession {
 
-	// we don't support multiple threads, so we can use a hardcoded ID for the default thread
 	private static THREAD_ID = 1;
-
-	// a Mock runtime (or debugger)
 	private _runtime: MockRuntime;
-
 	private _variableHandles = new Handles<string>();
-
 	private _configurationDone = new Subject();
 
 	/**
@@ -47,8 +37,8 @@ export class MockDebugSession extends LoggingDebugSession {
 	 * We configure the default implementation of a debug adapter here.
 	 */
 	public constructor() {
-		super("mock-debug.txt");
-
+		super();
+		console.log("Started...");
 		// this debugger uses zero-based lines and columns
 		this.setDebuggerLinesStartAt1(false);
 		this.setDebuggerColumnsStartAt1(false);
@@ -58,17 +48,17 @@ export class MockDebugSession extends LoggingDebugSession {
 		// setup event handlers
 		this._runtime.on('stopOnEntry', () => {
 			console.log("DUPA");
-			this.sendEvent(new StoppedEvent('entry', MockDebugSession.THREAD_ID));
+			this.sendEvent(new StoppedEvent('entry', AngelscriptDebugSession.THREAD_ID));
 		});
 		this._runtime.on('stopOnStep', () => {
-			this.sendEvent(new StoppedEvent('step', MockDebugSession.THREAD_ID));
+			this.sendEvent(new StoppedEvent('step', AngelscriptDebugSession.THREAD_ID));
 		});
 		this._runtime.on('stopOnBreakpoint', () => {
-			this.sendEvent(new StoppedEvent('breakpoint', MockDebugSession.THREAD_ID));
+			this.sendEvent(new StoppedEvent('breakpoint', AngelscriptDebugSession.THREAD_ID));
 		});
 		this._runtime.on('stopOnException', () => {
 			console.log("DUPA3");
-			this.sendEvent(new StoppedEvent('exception', MockDebugSession.THREAD_ID));
+			this.sendEvent(new StoppedEvent('exception', AngelscriptDebugSession.THREAD_ID));
 		});
 		this._runtime.on('breakpointValidated', (bp: MockBreakpoint) => {
 			this.sendEvent(new BreakpointEvent('changed', <DebugProtocol.Breakpoint>{ verified: bp.verified, id: bp.id }));
@@ -95,14 +85,10 @@ export class MockDebugSession extends LoggingDebugSession {
 		// build and return the capabilities of this debug adapter:
 		response.body = response.body || {};
 
-		// the adapter implements the configurationDoneRequest.
 		response.body.supportsConfigurationDoneRequest = true;
-
-		// make VS Code to use 'evaluate' when hovering over source
 		response.body.supportsEvaluateForHovers = true;
-
-		// make VS Code to show a 'step back' button
-		response.body.supportsStepBack = true;
+		response.body.supportsStepBack = false;
+		response.body.supportsRestartFrame = false;
 
 		this.sendResponse(response);
 
@@ -128,13 +114,15 @@ export class MockDebugSession extends LoggingDebugSession {
 		console.log("REQUEST");
 
 		// make sure to 'Stop' the buffered logging if 'trace' is not set
-		logger.setup(args.trace ? Logger.LogLevel.Verbose : Logger.LogLevel.Stop, false);
+		logger.setup(Logger.LogLevel.Verbose, true);
+
+			//args.trace ? Logger.LogLevel.Verbose : Logger.LogLevel.Stop, false);
 
 		// wait until configuration has finished (and configurationDoneRequest has been called)
 		await this._configurationDone.wait(1000);
 
 		// start the program in the runtime
-		this._runtime.start(args.program, !!args.stopOnEntry);
+		this._runtime.start("", !!args.stopOnEntry);
 
 		this.sendResponse(response);
 	}
@@ -152,6 +140,7 @@ export class MockDebugSession extends LoggingDebugSession {
 			let { verified, line, id } = this._runtime.setBreakPoint(path, this.convertClientLineToDebugger(l));
 			const bp = <DebugProtocol.Breakpoint> new Breakpoint(verified, this.convertDebuggerLineToClient(line));
 			bp.id= id;
+			console.log("Breakpoint request: " + path + ", line: " + line + " (" + id + ")");
 			return bp;
 		});
 
@@ -167,7 +156,7 @@ export class MockDebugSession extends LoggingDebugSession {
 		// runtime supports now threads so just return a default thread.
 		response.body = {
 			threads: [
-				new Thread(MockDebugSession.THREAD_ID, "thread 1")
+				new Thread(AngelscriptDebugSession.THREAD_ID, "thread 1")
 			]
 		};
 		this.sendResponse(response);
@@ -204,6 +193,7 @@ export class MockDebugSession extends LoggingDebugSession {
 	protected variablesRequest(response: DebugProtocol.VariablesResponse, args: DebugProtocol.VariablesArguments): void {
 
 		const variables = new Array<DebugProtocol.Variable>();
+		console.log("Variables request");
 		const id = this._variableHandles.get(args.variablesReference);
 		if (id !== null) {
 			variables.push({

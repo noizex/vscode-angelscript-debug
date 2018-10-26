@@ -1,5 +1,6 @@
 import { EventEmitter } from 'events';
 import { Socket } from 'net';
+import { readFileSync } from 'fs';
 
 export interface MockBreakpoint {
 	id: number;
@@ -48,6 +49,7 @@ export class MockRuntime extends EventEmitter {
 		this._client.on("data", (data: Buffer) => {
 			console.log(data.toString());
 		})
+		console.log("---");
 	}
 
 	/**

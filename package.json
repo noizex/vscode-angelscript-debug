@@ -1,12 +1,12 @@
 {
-	"name": "mock-debug",
-	"displayName": "Mock Debug",
-	"version": "0.27.0",
-	"publisher": "andreweinand",
-	"description": "Starter extension for developing debug adapters for VS Code.",
+	"name": "angelscript-remote-debug",
+	"displayName": "Angelscript Remote Debugger",
+	"version": "0.1.0",
+	"publisher": "noizex",
+	"description": "Angelscript remote debugger",
 	"author": {
-		"name": "Microsoft Corporation",
-		"email": "aweinand@microsoft.com"
+		"name": "Kamil Niechajewicz",
+		"email": "kamiln@gmail.com"
 	},
 	"license": "MIT",
 	"keywords": [
@@ -23,10 +23,10 @@
 	"private": true,
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/Microsoft/vscode-mock-debug.git"
+		"url": "https://github.com/noizex/vscode-angelscript-debug"
 	},
 	"bugs": {
-		"url": "https://github.com/Microsoft/vscode-mock-debug/issues"
+		"url": "https://github.com/noizex/vscode-angelscript-debug/issues"
 	},
 	"scripts": {
 		"prepublish": "tsc -p ./src",
@@ -40,8 +40,8 @@
 	},
 	"dependencies": {
 		"await-notify": "1.0.1",
-		"vscode-debugadapter": "1.27.0",
-		"vscode-debugprotocol": "1.27.0"
+		"vscode-debugadapter": "1.32.1",
+		"vscode-debugprotocol": "1.32.0"
 	},
 	"devDependencies": {
 		"@types/node": "7.0.55",
@@ -49,14 +49,13 @@
 		"typescript": "2.6.2",
 		"mocha": "5.0.1",
 		"vscode": "1.1.17",
-		"vscode-debugadapter-testsupport": "1.27.0",
+		"vscode-debugadapter-testsupport": "1.32.0",
 		"tslint": "5.9.1",
 		"vsce": "1.37.5"
 	},
 	"main": "./out/extension",
 	"activationEvents": [
-		"onDebug",
-		"onCommand:extension.mock-debug.getProgramName"
+		"*"
 	],
 	"contributes": {
 		"breakpoints": [
@@ -66,24 +65,27 @@
 		],
 		"debuggers": [
 			{
-				"type": "mock",
-				"label": "Mock Debug",
-				"program": "./test.exe",
+				"type": "angelscript",
+				"label": "Angelscript Debugger",
+				"runtime": "node",
+				"program": "./out/debugAdapter.js",
 				"configurationAttributes": {
 					"launch": {
-						"required": [
-							"program"
-						],
 						"properties": {
-							"program": {
+							"remoteHost": {
 								"type": "string",
-								"description": "Absolute path to a text file.",
-								"default": "${workspaceFolder}/${command:AskForProgramName}"
+								"description": "Remote host to which debugger attaches.",
+								"default": "127.0.01"
+							},
+							"remotePort": {
+								"type": "string",
+								"description": "Remote port to which debugger attaches.",
+								"default": "55557"
 							},
 							"stopOnEntry": {
 								"type": "boolean",
 								"description": "Automatically stop after launch.",
-								"default": true
+								"default": false
 							},
 							"trace": {
 								"type": "boolean",
@@ -95,29 +97,24 @@
 				},
 				"initialConfigurations": [
 					{
-						"type": "mock",
+						"type": "angelscript",
 						"request": "launch",
-						"name": "Ask for file name",
-						"program": "${workspaceFolder}/${command:AskForProgramName}",
-						"stopOnEntry": true
+						"name": "Run remote debugger",
+						"program": "${workspaceFolder}/test"
 					}
 				],
 				"configurationSnippets": [
 					{
-						"label": "Mock Debug: Launch",
-						"description": "A new configuration for 'debugging' a user selected markdown file.",
+						"label": "Angelscript Remote Debug: Launch",
+						"description": "A new configuration for remote debugging Angelscript runtime.",
 						"body": {
-							"type": "mock",
+							"type": "angelscript",
 							"request": "launch",
-							"name": "Ask for file name",
-							"program": "^\"\\${workspaceFolder}/\\${command:AskForProgramName}\"",
-							"stopOnEntry": true
+							"name": "Run remote debugger",
+							"program": "${workspaceFolder}/test"
 						}
 					}
-				],
-				"variables": {
-					"AskForProgramName": "extension.mock-debug.getProgramName"
-				}
+				]
 			}
 		]
 	}

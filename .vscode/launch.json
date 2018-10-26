@@ -35,13 +35,6 @@
 			"outFiles": [ "${workspaceFolder}/out/**/*.js" ],
 			"internalConsoleOptions": "openOnSessionStart"
 		},
-		{
-			"type": "mock",
-			"request": "launch",
-			"name": "Mock Sample",
-			"program": "${workspaceFolder}/${command:AskForProgramName}",
-			"stopOnEntry": true
-		}
 	],
 	"compounds": [
 		{
